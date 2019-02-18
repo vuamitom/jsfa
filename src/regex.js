@@ -1,16 +1,19 @@
+const Parser = require('./parser.js');
 
 class Regexp {
-	constructor(str) {
-		this.pos = 0;
+	constructor(str) {		
+		this.str = str;		
+		this.root = Parser.parse(str);
 	}
 
-	match(c) {
-		// if (this.pos >= 1)
+	toAutomaton() {
+
 	}
 
-	more() {
-		
+	toString() {
+		return this.root.print();
 	}
 }
+
 
 module.exports = Regexp;
