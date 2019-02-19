@@ -202,7 +202,14 @@ class Automaton {
 			&& other.subsetOf(this);
 	}
 
-	// check if this is a subset of other
+	/**
+	 * Returns true if the language of <code>a1</code> is a subset of the
+	 * language of <code>a2</code>. 
+	 * As a side-effect, <code>a2</code> is determinized if not already marked as
+	 * deterministic.
+	 * <p>
+	 * Complexity: quadratic in number of states.
+	 */
 	subsetOf(other) {
 		if (this === other) return true;
 		if (this.isSingleton()) {
@@ -212,7 +219,7 @@ class Automaton {
 			return other.run(this.singleton);
 		}
 		other.determinize();
-		// TODO:
+		// TODO: 
 	}
 
 	// Determinizes the given automaton using the given set of initial states. 
@@ -391,6 +398,11 @@ class Automaton {
 		for (let s of states) {
 			s.number = n++;
 		}
+	}
+
+	getSortedTrans() {
+		let states = this.states();
+		// TODO: 
 	}
 
 	getStartPoints() {
