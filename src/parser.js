@@ -70,7 +70,7 @@ class Parser {
 		let n = this.parseRepeat();
 		if (this.more() && !this.peek(')|')) {
 			// NOTE: omit check intersection
-			n = n.concate(this.parseConcat());
+			n = n.concatenate(this.parseConcat());
 		}
 		return n;
 	}
@@ -263,7 +263,7 @@ class Node {
 		});
 	}
 
-	concate(other) {
+	concatenate(other) {
 		if ((this.kind === Kind.CHAR || this.kind === Kind.STRING)
 			&& (other.kind === Kind.CHAR || other.kind === Kind.STRING)) {
 			return this.appendString(other);
@@ -306,7 +306,7 @@ class Node {
 		});
 	}
 
-	print() {
+	toString() {
 		let a = [];
 		return this._toString(a).join('');
 	}
@@ -389,5 +389,6 @@ module.exports = {
 			throw 'Expect input string arg';
 		}
 		return new Parser(str).run();
-	}
+	},
+	kinds: Kind
 }
