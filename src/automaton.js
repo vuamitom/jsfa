@@ -104,15 +104,31 @@ class State {
 		ar.sort(sortState(true));
 		return ar;
 	}
+
+	getTransSorted() {
+		let ar = [...this.trans];
+		ar.sort(sortState(false));
+		return ar;	
+	}
 }
 
 class Automaton {
 
-	constructor() {
-		this.initial = new State();
-		this.deterministic = true;
-		this.singleton = null;
-		this.hash_code = 0;
+	constructor(original) {
+		if (!original) {
+			this.initial = new State();
+			this.deterministic = true;
+			this.singleton = null;
+			this.hash_code = 0;
+			this.allow_mutation = false;
+		}
+		else {
+			this.initial = original.initial;
+			this.deterministic = original.deterministic;
+			this.singleton = original.singleton;
+			this.hash_code = original.hash_code;
+			this.allow_mutation = original.allow_mutation;
+		}
 	}
 
 	get hashCode() {
@@ -168,6 +184,52 @@ class Automaton {
 		return this._visit();
 	}
 
+	/**
+	 * returns a deep clone
+	 */
+	clone() {
+		let a = new Automaton(this);
+		if (!this.isSingleton()) {
+			let states = this.states(),
+				m = {};
+			for (let s of states) {
+				m[s.id] = new State();
+			}
+			for (let s of states) {
+				let p = m.get(s.id);
+				p.accept = s.accept;
+				if (s === this.initial)
+					a.initial = p;
+				for (let t of s.trans) {
+					p.addTran(new Transition(t.min, t.max, m[t.to.id]));
+				}
+			}
+			
+		}	
+		return a;
+	}
+
+	cloneExpanded() {
+		let a = this.clone();
+		a.expandSingleton();
+		return a;
+	}
+
+	cloneExpandedIfRequired() {
+		if (this.allow_mutation) {
+			this.expandSingleton();
+			return this;
+		}
+		else {
+			return this.cloneExpanded();
+		}
+	}
+
+	cloneIfRequired() {
+		return this.allow_mutation? this: this.clone();
+	}
+
+
 	expandSingleton() {
 		if (this.isSingleton()) {
 			let p = new State();
@@ -220,6 +282,51 @@ class Automaton {
 		}
 		other.determinize();
 		// TODO: 
+		let trans1 = this.getSortedTrans(),
+			trans2 = other.getSortedTrans(),
+			worklist = [],
+			visited = new Set(),
+			idx = 0,
+			hashCode = (arr) => {
+				return arr[0].id + '_' + arr[1].id;
+			};
+		let p = [this.initial, other.initial];
+		worklist.push(p);
+		visited.add(hashCode(p));
+
+		while (idx < worklist.length) {
+			let p = worklist[idx];
+			if (p[0].accept && !p[1].accept)
+				return false;
+			let ts1 = trans1[p[0].number],
+				ts2 = trans2[p[1].number];
+			for (let n1 = 0, b2 = 0; n1 < ts1.length; n1++) {
+				while (b2 < ts2.length && ts2[b2].max < ts1[n1].min)
+					b2++;
+				let min1 = ts1[n1].min,
+					max1 = ts1[n1].max;
+				for (let n2 = b2; n2 < ts2.length && ts1[n1].max >= ts2[n2].min; n2++) {
+					if (ts2[n2].min > min1)
+						return false;
+					if (ts2[n2].max < MAX_CHAR)
+						min1 = ts2[n2].max + 1;
+					else {
+						min1 = MAX_CHAR;
+						max1 = MIN_CHAR;
+					}
+					let q = [ts1[n1].to, ts2[n2].to];
+					if (!visited.has(hashCode(q))) {
+						worklist.push(q);
+						visited.add(hashCode(q));
+					}
+				}
+				if (min1 <= max1)
+					return false;
+			}
+			idx ++;
+		}
+
+		return true;
 	}
 
 	// Determinizes the given automaton using the given set of initial states. 
@@ -403,6 +510,10 @@ class Automaton {
 	getSortedTrans() {
 		let states = this.states();
 		// TODO: 
+		this._setStateNumbers(states);
+		return states.map(s => {
+			return trans = s.getTransSorted();
+		});
 	}
 
 	getStartPoints() {
@@ -421,9 +532,21 @@ class Automaton {
 		return r;
 	}
 
+	isEmpty() {
+		if (this.isSingleton()) return false;
+		return !this.initial.accept && this.initial.noOfTransitions === 0;
+	}
+
+	minimizeHopcroft() {
+		// TODO: 
+		this.removeDeadTransitions();
+	}
 
 	minimize() {
-
+		if (!this.isSingleton()) {
+			this.minimizeHopcroft();
+		}
+		this.recomputeHashCode();
 	}
 
 	// Returns true if the given string is accepted by the automaton.
@@ -432,7 +555,19 @@ class Automaton {
 	}
 
 	static concatenate(ls) {
-
+		if (ls.length === 0) {
+			return Automaton.makeEmpty();
+		}
+		let allSingleton = !ls.some(a => !a.isSingleton());
+		if (allSingleton) {
+			let b = ls.map(a => a.singleton).join('');
+			return Automaton.makeString(b);
+		}
+		else {
+			if (ls.some(a => a.isEmpty()))
+				return Automaton.makeEmpty();
+			// TODO: 
+		}
 	}
 
 	static union(ls) {
@@ -475,3 +610,5 @@ class Automaton {
 		return Automaton.makeChar(s);
 	}
 }
+
+module.exports = Automaton;

@@ -19,4 +19,11 @@ describe('Regexp', () => {
 			assert.equal(r.toString(), '(ab|(xy|zt))');
 		});
 	});
+	describe('#toAutomaton()', () => {
+		it('basic cases', () => {
+			let r = new Regexp('a');
+			let a = r.toAutomaton();
+			assert(a != null);
+		});
+	});
 });

@@ -18,15 +18,16 @@ function flatten(n) {
 
 function toAutomaton(n, minimize) {
 	const K = Parser.kinds;
-	let a = null;
+	let a = null,
+		l;
 	switch(n.kind) {
 		case K.UNION:
-			let l = flatten(n);
+			l = flatten(n);
 			a = Automaton.union(l.map(e => toAutomaton(e, minimize)));
 			if (minimize) a.minimize();
 			break;
 		case K.CONCAT:
-			let l = flatten(n);
+			l = flatten(n);
 			a = Automaton.concatenate(l.map(e => toAutomaton(e, minimize)));
 			if (minimize) a.minimize();
 			break;
@@ -53,17 +54,17 @@ function toAutomaton(n, minimize) {
 			if (minimize) a.minimize();
 		break;
 		case K.CHAR:
-			a = Automaton.char(n.c);
+			a = Automaton.makeChar(n.c);
 			break;
 		break;
 		case K.CHAR_RANGE:
-			a = Automaton.charRange(n.from, n.to);
+			a = Automaton.makeCharRange(n.from, n.to);
 		break;
 		case K.ANYCHAR:
-			a = Automaton.anyChar();
+			a = Automaton.makeAnyChar();
 		break;
 		case K.STRING:
-			a = Automaton.str(n.s);
+			a = Automaton.makeString(n.s);
 		break;
 	}
 	return a;
@@ -83,21 +84,6 @@ class Regexp {
 		return this.root.toString();
 	}
 }
-	UNION: 1,
-	CONCAT: 2,
-	INTERSEC: 3,
-	OPTIONAL: 4,
-	REPEAT: 5,
-	REPEAT_MIN: 6,
-	REPEAT_MINMAX: 7,
-	COMPLEMENT: 8,
-	CHAR: 9,
-	CHAR_RANGE: 10,
-	ANYCHAR: 11,
-	EMPTY: 12,
-	STRING: 13,
-	ANYSTRING: 14,
-	AUTO: 15,
-	INTERVAL: 16
+	
 
 module.exports = Regexp;
