@@ -21,9 +21,14 @@ describe('Regexp', () => {
 	});
 	describe('#toAutomaton()', () => {
 		it('basic cases', () => {
-			let r = new Regexp('a');
-			let a = r.toAutomaton();
-			assert(a != null);
+			
+			let a = new Regexp('a').toAutomaton();
+
+			a = new Regexp('abc').toAutomaton();
+			// assert(a != null);
+			a = new Regexp('.').toAutomaton();
+			// assert(a != null);
+			console.log(a);
 		});
 	});
 });

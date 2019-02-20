@@ -7,7 +7,7 @@ const MAX_CHAR = 0xffff;
 
 class Transition {
 	constructor(min, max, to) {
-		if (!min || min.length > 1) {
+		if (min === null || min === undefined) {			
 			throw 'expect parameter to be single character';
 		}
 		max = max && max > min? max: min;		
@@ -66,7 +66,8 @@ class State {
 			console.error('State: transition with duplicate char range');
 		}	
 		else {	
-			this.trans.add(t);
+			this.transCode.add(t.hashCode);
+			this.trans.push(t);
 		}
 	}
 
