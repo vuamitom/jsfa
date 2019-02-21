@@ -17,14 +17,20 @@ function flatten(n) {
 }
 
 function toAutomaton(n, minimize) {
+	// console.log('need minimize 1', minimize);
 	const K = Parser.kinds;
 	let a = null,
 		l;
 	switch(n.kind) {
 		case K.UNION:
 			l = flatten(n);
+			// let temp = ;
+			// console.log(temp);
 			a = Automaton.union(l.map(e => toAutomaton(e, minimize)));
-			if (minimize) a.minimize();
+			if (minimize) {
+				// console.log('need minimize', minimize);
+				a.minimize();
+			}
 			break;
 		case K.CONCAT:
 			l = flatten(n);

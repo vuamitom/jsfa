@@ -10,6 +10,10 @@ class Transition {
 		if (min === null || min === undefined) {			
 			throw 'expect parameter to be single character';
 		}
+		if (min.constructor === String) 
+			min = min.codePointAt(0);
+		if (max && max.constructor === String)
+			max = max.codePointAt(0);
 		max = max && max > min? max: min;		
 		this.max = max; 
 		this.min = min;
@@ -111,6 +115,15 @@ class State {
 		ar.sort(sortState(false));
 		return ar;	
 	}
+
+	step(c) {
+		for (let t of this.trans) {
+			if (t.min <= c && c <= t.max) {
+				return t.to;
+			}
+		}
+		return null;
+	}
 }
 
 class Automaton {
@@ -172,7 +185,7 @@ class Automaton {
 			for (let t of state.trans) {				
 				if (!visited.has(t.to)) {
 					visited.add(t.to);
-					worklist.add(t.to);
+					worklist.push(t.to);
 				}
 			}
 			s ++;
@@ -403,6 +416,7 @@ class Automaton {
 			if (state.accept) {
 				container.add(state);
 			}
+			return container;
 		}, accepts);
 		return accepts;
 	}
@@ -441,7 +455,7 @@ class Automaton {
 			return;
 		}	
 		let states = this.states(),
-			live = this._getLiveStates();
+			live = this._getLiveStates(states);
 		for (let s of states) {
 			let trans = s.trans;
 			s.resetTransitions();
@@ -538,8 +552,71 @@ class Automaton {
 		return !this.initial.accept && this.initial.noOfTransitions === 0;
 	}
 
+
+	/** 
+	 * Adds transitions to explicit crash state to ensure that transition function is total. 
+	 */
+	totalize() {
+		let s = new State();
+		s.addTran(new Transition(MIN_CHAR, MAX_CHAR, s));
+		for (let p of this.states()) {
+			let maxi = MIN_CHAR;
+			for (let t of p.getTransSorted()) {
+				if (t.min > maxi)
+					p.addTran(new Transition(maxi, t.min - 1, s));
+				if (t.max + 1 > maxi)
+					maxi = t.max + 1;
+			}
+			if (maxi <= MAX_CHAR) {
+				p.addTran(new Transition(maxi, MAX_CHAR, s));
+			}
+		}
+	}
+
 	minimizeHopcroft() {
-		// TODO: 
+		this.determinize();
+		if (this.initial.noOfTransitions === 1) {
+			let t = this.initial.trans[0];
+			if (t.to === this.initial
+				&& t.min === MIN_CHAR
+				&& t.max === MAX_CHAR)
+				return;
+		}
+		this.totalize();
+		let ss = [...this.states()];
+		let number = 0;
+		for (let q of ss) {
+			q.number = number++;
+		}
+		let sigma = this.getStartPoints();
+		// TODO: init structs
+		for smth
+
+		let partition = [],
+			block = {};
+
+		// find initial partition and reverse edges
+		for (let q = 0; q < ss.length; q++) {
+			let qq = ss[q];
+			let j = qq.accept? 0: 1;
+			partition[j].push(qq);
+			block[qq.number] = j;
+			for (let x = 0; x < sigma.length; x++) {
+				let p = qq.step(sigma(x));
+				reverse
+				reverse_nonempty
+			}
+		}
+
+		// initialize active sets
+		for (let j = 0; j <=1 ;j++) {
+			for (let x = 0; x < sigma.length; x++) {
+				for (let qq of partition[j])
+					if (reverse_nonempty)
+						active2 && active
+			}
+		}
+
 		this.removeDeadTransitions();
 	}
 
@@ -550,9 +627,19 @@ class Automaton {
 		this.recomputeHashCode();
 	}
 
+	checkMinimizeAlways() {
+		if (Automaton.alwaysMinimize()) {
+			this.minimize();
+		}
+	}
+
 	// Returns true if the given string is accepted by the automaton.
 	run() {
 
+	}
+
+	static alwaysMinimize() {
+		return false;
 	}
 
 	static concatenate(ls) {
@@ -573,9 +660,21 @@ class Automaton {
 
 	static union(ls) {
 		ls = arguments.length > 1? arguments: ls;
-		for (let a of ls) {
-
+		let ids = new Set();
+		ls.forEach(a => ids.add(a));
+		let hasAliases = (ids.size !== ls.length);
+		let s = new State();
+		for (let b of ls) {
+			if (b.isEmpty()) continue;
+			let bb = (hasAliases)? b.cloneExpanded(): b.cloneExpandedIfRequired();
+			s.addEpsilon(bb.initial);
 		}
+		let a = new Automaton();
+		a.initial = s;
+		a.deterministic = false;
+		a.clearHashCode();
+		a.checkMinimizeAlways();
+		return a;
 	}
 
 	// make default structure
