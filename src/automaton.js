@@ -1,4 +1,5 @@
 const StateSet = require('./struct.js').StateSet;
+const DoubleLinkedList = require('./struct.js').DoubleLinkedList;
 let nextStateId = 0;
 
 const MIN_CHAR = 0;
@@ -63,15 +64,18 @@ class State {
 		this.id = nextStateId ++;
 		this.resetTransitions();
 		this.accept = false;
+		this.number = 0;
 	}
 
 	addTran(t) {
 		if (this.transCode.has(t.hashCode)) {
 			console.error('State: transition with duplicate char range');
+			return false;
 		}	
 		else {	
 			this.transCode.add(t.hashCode);
 			this.trans.push(t);
+			return true;
 		}
 	}
 
@@ -124,6 +128,10 @@ class State {
 		}
 		return null;
 	}
+
+	// inspect() {
+	// 	return `State (id: ${this.id}, number ${this.number})`;
+	// }
 }
 
 class Automaton {
@@ -210,7 +218,7 @@ class Automaton {
 				m[s.id] = new State();
 			}
 			for (let s of states) {
-				let p = m.get(s.id);
+				let p = m[s.id];
 				p.accept = s.accept;
 				if (s === this.initial)
 					a.initial = p;
@@ -276,6 +284,73 @@ class Automaton {
 		return this.hashCode === other.hashCode
 			&& this.subsetOf(other)
 			&& other.subsetOf(this);
+	}
+
+	/**
+	 * Returns an automaton that accepts between <code>min</code> and
+	 * <code>max</code> (including both) concatenated repetitions of the
+	 * language of the given automaton.
+	 * <p>
+	 * Complexity: linear in number of states and in <code>min</code> and
+	 * <code>max</code>.
+	 */
+	repeat(min = 0, max) {
+		if (!min
+			&& (max === undefined || max === null)) {
+			let a = this.cloneExpanded();
+			let s = new State();
+			s.accept = true;
+			s.addEpsilon(a.initial);
+			for (let p of a.getAcceptStates())
+				p.addEpsilon(s);
+			a.initial = s;
+			a.deterministic = false;
+			a.clearHashCode();
+			a.checkMinimizeAlways();
+			return a;
+		}
+		if (max !== null && max !== undefined) {
+			if (min > max) {
+				return Automaton.makeEmpty();
+			}
+			max -= min;
+			this.expandSingleton();
+			let b;
+			if (min === 0)
+				b = Automaton.makeEmptyString();
+			else if (min === 1)
+				b = this.clone();
+			else {
+				let as = new Array(min);
+				for (let i = 0; i < min; i++) {
+					as[i] = this;
+				}
+				b = Automaton.concatenate(as);
+			}
+			if (max > 0) {
+				let d = this.clone();
+				while (--max > 0) {
+					let c = this.clone();
+					for (let p of c.getAcceptStates()) 
+						p.addEpsilon(d.initial);
+					d = c;
+				}
+				for (let p of b.getAcceptStates()) 
+					p.addEpsilon(d.initial);
+				b.deterministic = false;
+				b.clearHashCode();
+				b.checkMinimizeAlways();
+			}
+			return b;
+		}
+		else {		
+			let as = new Array(min + 1);
+			for (let i = 0; i < min; i++) {
+				as[i] = this;
+			}
+			as[min] = this.repeat();
+			return Automaton.concatenate(as);
+		}
 	}
 
 	/**
@@ -421,7 +496,7 @@ class Automaton {
 		return accepts;
 	}
 
-	_getLiveStates(states) {
+	getLiveStates(states) {
 		let map = {};
 		for (let s of states) {
 			map[s.id] = new Set();
@@ -432,7 +507,7 @@ class Automaton {
 			}
 		}
 		let live = this.getAcceptStates();
-		let s = 0, worklist = [];
+		let s = 0, worklist = [...live];
 		while (s < worklist.length) {
 			let st = worklist[s];
 			for (let p of map[st.id]) {
@@ -441,6 +516,7 @@ class Automaton {
 					worklist.push(p);
 				}
 			}
+			s+=1;
 		}
 		return live;
 	}
@@ -454,8 +530,10 @@ class Automaton {
 		if (this.isSingleton()) {
 			return;
 		}	
+
 		let states = this.states(),
-			live = this._getLiveStates(states);
+			live = this.getLiveStates(states);
+		console.log('BEFORE removeDeadTransitions', states);
 		for (let s of states) {
 			let trans = s.trans;
 			s.resetTransitions();
@@ -465,6 +543,7 @@ class Automaton {
 				}
 			}
 		}
+		console.log('AFTER removeDeadTransitions', states);
 		this.reduce();
 	}
 
@@ -543,13 +622,20 @@ class Automaton {
 			}
 		}
 		let r = [...pointset];
-		r.sort();
+		r.sort((a, b) => a - b);
 		return r;
 	}
 
 	isEmpty() {
 		if (this.isSingleton()) return false;
 		return !this.initial.accept && this.initial.noOfTransitions === 0;
+	}
+
+	isEmptyString() {
+		if (this.isSingleton())
+			return this.singleton.length === 0;
+		else 
+			return this.initial.accept && this.initial.noOfTransitions === 0;
 	}
 
 
@@ -574,6 +660,7 @@ class Automaton {
 	}
 
 	minimizeHopcroft() {
+		console.log('----- before determinize', this.states())
 		this.determinize();
 		if (this.initial.noOfTransitions === 1) {
 			let t = this.initial.trans[0];
@@ -582,29 +669,40 @@ class Automaton {
 				&& t.max === MAX_CHAR)
 				return;
 		}
+		console.log('before totalize')
 		this.totalize();
 		let ss = [...this.states()];
 		let number = 0;
+
 		for (let q of ss) {
 			q.number = number++;
 		}
+		console.log('OLD STATE', ss);
 		let sigma = this.getStartPoints();
-		// TODO: init structs
-		for smth
 
-		let partition = [],
-			block = {};
+		// TODO: init structs		
+		let partition = ss.map(s => new DoubleLinkedList()),
+			block = new Array(ss.length),
+			reverse = ss.map(s => sigma.map(_ => [])),
+			active = ss.map(s => sigma.map(_ => new DoubleLinkedList())),
+			active2 = ss.map(s => new Array(sigma.length)),
+			pending = [],
+			pending2 = sigma.map(_ => new Array(ss.length)),
+			split = [],
+			split2 = new Array(ss.length),
+			refine = [],
+			refine2 = new Array(ss.length),
+			splitblock = ss.map(s => []);
 
 		// find initial partition and reverse edges
 		for (let q = 0; q < ss.length; q++) {
 			let qq = ss[q];
 			let j = qq.accept? 0: 1;
-			partition[j].push(qq);
+			partition[j].add(qq);
 			block[qq.number] = j;
 			for (let x = 0; x < sigma.length; x++) {
-				let p = qq.step(sigma(x));
-				reverse
-				reverse_nonempty
+				let p = qq.step(sigma[x]);
+				reverse[p.number][x].push(qq);
 			}
 		}
 
@@ -612,16 +710,123 @@ class Automaton {
 		for (let j = 0; j <=1 ;j++) {
 			for (let x = 0; x < sigma.length; x++) {
 				for (let qq of partition[j])
-					if (reverse_nonempty)
-						active2 && active
+					if (reverse[qq.number][x].length > 0) {						
+						active2[qq.number][x] = active[j][x].add(qq);
+					}
 			}
 		}
 
+		// initialize pending
+		for (let x = 0; x < sigma.length; x++) {
+			let a0 = active[0][x].length,
+				a1 = active[1][x].length,
+				j = a0 <= a1? 0: 1;
+			pending.push({n1: j, n2: x});
+			pending2[x][j] = true;
+		}
+
+		// process pending until fixed point
+		let idx = 0,
+			k = 2; // the next partition
+		while (idx < pending.length) {
+			let ip = pending[idx],
+				p = ip.n1, 
+				x = ip.n2;
+			pending2[x][p] = false;
+			// find states that need to be split off their blocks
+			for (let m of active[p][x]) {
+				for (let s of reverse[m.number][x]) {
+					if (!split2[s.number]) {
+						split2[s.number] = true;
+						split.push(s);
+						let j = block[s.number];
+						splitblock[j].push(s);
+						if (!refine2[j]) {
+							refine2[j] = true;
+							refine.push(j);
+						}
+					}
+				}
+			}
+			// refine blocks
+			for (let j of refine) {
+				if (splitblock[j].length < partition[j].length) {
+					let b1 = partition[j],
+						b2 = partition[k];
+					for (let s of splitblock[j]) {
+						b1.remove(s);
+						b2.add(s);
+						block[s.number] = k;
+						for (let c = 0; c < sigma.length; c++) {
+							let sn = active2[s.number][c];
+							if (sn && sn.ls === active[j][c]) {
+								sn.remove();
+								active2[s.number][c] = active[k][c].add(s);
+							}
+						}
+					}
+					// update pending
+					for (let c = 0; c < sigma.length; c++) {
+						let aj = active[j][c].length,
+							ak = active[k][c].length;
+						if (!pending2[c][j] && 0 < aj && aj <= ak) {
+							pending2[c][j] = true;
+							pending.push({n1: j, n2: c});
+						}
+						else {
+							pending2[c][k] = true;
+							pending.push({n1: k, n2: c});
+						}
+					}
+					k++;
+				}
+				for (let s of splitblock[j]) 
+					split2[s.number] = false;
+				refine2[j] = false;
+				splitblock[j] = [];
+			}
+			split = [];
+			refine = [];
+			idx ++;
+		}
+		// console.log('PARTITION', partition);
+		// make a new state for each equivalence class, set initial state
+		let newstates = new Array(k);
+		for (let n = 0; n < newstates.length; n++) {
+			let s = new State();
+			newstates[n] = s;
+			for (let q of partition[n]) {
+				if (q === this.initial) {
+					console.log('set this initial ', s);
+					this.initial = s;
+				}
+				s.accept = q.accept;				
+				// console.log('...q = ', q);	
+				s.number = q.number;
+				q.number = n;
+			}
+			console.log ('s = ', s);
+		}
+		// build transitions and set acceptance
+		
+		
+		for (let n = 0; n < newstates.length; n++) {
+			let s = newstates[n];
+			console.log(s, '---', ss[s.number]);
+			s.accept = ss[s.number].accept;
+			for (let t of ss[s.number].trans) {
+				s.addTran(new Transition(t.min, t.max, newstates[t.to.number]));
+			}
+
+		}
+		console.log('NEW STATE', newstates);
+		// console.log(' actual state ', this.states())
 		this.removeDeadTransitions();
 	}
 
 	minimize() {
 		if (!this.isSingleton()) {
+			console.log('minimizing ...')
 			this.minimizeHopcroft();
 		}
 		this.recomputeHashCode();
@@ -643,8 +848,9 @@ class Automaton {
 	}
 
 	static concatenate(ls) {
+		ls = arguments.length > 1? arguments: ls;
 		if (ls.length === 0) {
-			return Automaton.makeEmpty();
+			return Automaton.makeEmptyString();
 		}
 		let allSingleton = !ls.some(a => !a.isSingleton());
 		if (allSingleton) {
@@ -654,7 +860,32 @@ class Automaton {
 		else {
 			if (ls.some(a => a.isEmpty()))
 				return Automaton.makeEmpty();
-			// TODO: 
+			let ids = new Set();
+			ls.forEach(a => ids.add(a));
+			let hasAliases = (ids.size !== ls.length),
+				b = hasAliases? ls[0].cloneExpanded(): ls[0].cloneExpandedIfRequired(),
+				ac = b.getAcceptStates(),
+				first = true;
+			for (let a of ls)			 {
+				if (first)
+					first = false
+				else {
+					if (a.isEmptyString())
+						continue;
+					let aa = hasAliases? a.cloneExpanded(): a.cloneExpandedIfRequired(),
+						ns = aa.getAcceptStates();
+					for (let s of ac) {
+						s.accept = false;
+						s.addEpsilon(aa.initial);
+						if (s.accept) ns.add(s);
+					}
+					ac = ns;
+				}
+			}
+			b.deterministic = false;
+			b.clearHashCode();
+			b.checkMinimizeAlways();
+			return b;
 		}
 	}
 
@@ -680,8 +911,13 @@ class Automaton {
 	// make default structure
 	static makeEmpty() {
 		let a = new Automaton();
-		a.singleton = '';
+		a.initial = new State();
+		a.deterministic = true;
 		return a;
+	}
+
+	static makeEmptyString() {
+		return Automaton.makeString('');
 	}
 
 	static makeAnyChar() {
@@ -691,6 +927,7 @@ class Automaton {
 	static makeChar(c) {
 		let a = new Automaton();
 		a.singleton = c;
+		a.deterministic = true;
 		return a;		
 	}
 

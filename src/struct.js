@@ -48,6 +48,83 @@ class StateSet {
 	}
 }
 
+class DoubleLinkedListNode {
+	constructor(q) {
+		this.obj = q;
+		this.next = null;
+		this.prev = null;
+		this.ls = null;
+	}
+
+	remove() {
+		if (this.prev === null) {
+			this.ls.first = this.next;						
+		}
+		else {
+			this.prev.next = this.next;
+		}
+		if (this.next === null) {
+			this.ls.last = this.prev;
+		}
+		else {
+			this.next.prev = this.prev;
+		}		
+		this.ls.size --;
+		this.next = null;
+		this.prev = null;
+		this.ls = null;
+		this.obj = null;
+	}
+}
+
+class DoubleLinkedList {
+	constructor() {
+		this.size = 0;
+		this.first = null;
+		this.last = null;
+	}
+
+	get length() {
+		return this.size;
+	}
+
+	add(q) {
+		let n = new DoubleLinkedListNode(q);
+		n.ls = this;
+		if (this.size === 0) {
+			this.first = this.last = n;
+		}
+		else {
+			n.prev = this.last;
+			this.last.next = n;
+			this.last = n;
+		}
+		this.size ++;
+		return n;
+	}
+
+	remove(q) {
+		let n = this.first;
+		while (n) {
+			if (n.obj === q) {
+				n.remove();				
+				return true;
+			}
+			n = n.next;
+		}
+		return false;
+	}
+
+	*[Symbol.iterator]() {
+		let n = this.first;
+		while (n) {			
+			yield n.obj;
+			n = n.next;
+		}
+	}
+}
+
 module.exports = {
-	StateSet
+	StateSet,
+	DoubleLinkedList
 };
