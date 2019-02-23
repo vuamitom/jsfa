@@ -852,6 +852,18 @@ class Automaton {
 		}
 	}
 
+	optional() {
+		let a = this.cloneExpandedIfRequired();
+		let s = new State();
+		s.addEpsilon(a.initial);
+		s.accept = true;
+		a.initial = s;
+		a.deterministic = false;
+		a.clearHashCode();
+		a.checkMinimizeAlways();
+		return a;
+	}
+
 	/**
 	 * Returns true if the given string is accepted by the automaton.
 	 * <p>

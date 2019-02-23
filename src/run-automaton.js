@@ -2,6 +2,94 @@ const Struct = require('./struct.js');
 const MIN_CHAR = Struct.MIN_CHAR;
 const MAX_CHAR = Struct.MAX_CHAR;
 
+class Matcher {
+    constructor(ra, s) {
+        this.automaton = ra;
+        this.chars = s;
+        this.matchStart = -1;
+        this.matchEnd = -1;
+    }
+
+    /**
+     * Find the next matching subsequence of the input.
+     * <br>
+     * This also updates the values for the {@code start}, {@code end}, and
+     * {@code group} methods.
+     *
+     * @return {@code true} if there is a matching subsequence.
+     */
+    find() {
+        let begin;
+        switch (this.matchStart) {
+            case -2: return false;
+            case -1: begin = 0; break;
+            default:
+                begin = this.matchEnd;
+                if (begin === this.matchStart) {
+                    begin++;
+                    if (begin > this.chars.length) {
+                        this.matchStart = this.matchEnd = -2;
+                        return false;
+                    }
+                }
+        }
+
+        let ms, me;
+        if (this.automaton.isAccept(this.automaton.initial)) {
+            ms = me = begin;
+        }
+        else {
+            ms = me = -1;
+        }
+        while (begin < this.chars.length) {
+            let p = this.automaton.initial;
+            for (let i = begin; i < this.chars.length; i++) {
+                // console.log('idx: ', i, 'char ', this.chars[i])
+                // console.log('cp', this.chars.codePointAt(i));
+                let newState = this.automaton.step(p, this.chars.codePointAt(i));
+                // console.log('1')
+                if (newState === null || newState === undefined) break;
+                else if(this.automaton.isAccept(newState)) {
+                    ms = begin;
+                    me = i + 1;
+                }
+                p = newState;
+                // console.log('2')
+            }
+            if (ms !== -1) {
+                this.matchStart = ms;
+                this.matchEnd = me;
+                return true;
+            }
+            begin += 1;
+        }
+        if (ms !== -1) {
+            this.matchStart = ms;
+            this.matchEnd = me;
+            return true;
+        }
+        else {
+            this.matchStart = this.matchEnd = -2;
+            return false;
+        }
+    }
+
+    _matchGood() {
+        if (this.matchStart < 0 || this.matchEnd < 0)
+            throw 'There was no available match';
+    }
+
+    start() {
+        this._matchGood();
+        return this.matchStart;
+    }
+
+    end() {
+        this._matchGood();
+        return this.matchEnd;
+    }
+}
+
 class RunAutomaton {
     constructor(a, tableize = false) {
         a.determinize();
@@ -33,11 +121,16 @@ class RunAutomaton {
 
     }
 
+    isAccept(stateNo) {
+        return this.accept[stateNo];
+    }
+
     /**
      * Gets character class of given char.
      */
     getCharClass(c) {
-
+        if (c.constructor === String)
+            c = c.codePointAt(0);
         // c = c.codePointAt(0);
         if (this.classmap) {
             return this.classmap[c];
@@ -45,8 +138,8 @@ class RunAutomaton {
         else {
             // do a binary search
 
-            let a = 0, b = this.points.length - 1;
-            while (a < b) {
+            let a = 0, b = this.points.length;
+            while (a < b - 1) {
                 let m = (a + b) >>> 1;
                 if (this.points[m] < c) {
                     a = m;
@@ -83,6 +176,15 @@ class RunAutomaton {
                 return false;
         }
         return this.accept[p];
+    }
+
+    /**
+     * Creates a new automaton matcher for the given input.
+     * @param s the CharSequence to search
+     * @return Matcher new automaton matcher for the given input
+     */
+    matcher(s) {
+        return new Matcher(this, s);
     }
 }
 
