@@ -1,3 +1,6 @@
+const MIN_CHAR = 0;
+const MAX_CHAR = 0xffff;
+
 class StateSet {
 	constructor() {
 		this.vals = {};
@@ -126,5 +129,7 @@ class DoubleLinkedList {
 
 module.exports = {
 	StateSet,
-	DoubleLinkedList
+	DoubleLinkedList,
+	MIN_CHAR,
+	MAX_CHAR
 };

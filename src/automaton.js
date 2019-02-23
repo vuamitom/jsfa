@@ -1,9 +1,12 @@
-const StateSet = require('./struct.js').StateSet;
-const DoubleLinkedList = require('./struct.js').DoubleLinkedList;
+const Struct = require('./struct.js');
+const StateSet = Struct.StateSet;
+const DoubleLinkedList = Struct.DoubleLinkedList;
+const MIN_CHAR = Struct.MIN_CHAR;
+const MAX_CHAR = Struct.MAX_CHAR;
+
+
 let nextStateId = 0;
 
-const MIN_CHAR = 0;
-const MAX_CHAR = 0xffff;
 
 
 class Transition {
@@ -354,6 +357,17 @@ class Automaton {
 	}
 
 	/**
+	 * Returns an automaton that accepts the intersection of
+	 * the languages of the given automata.
+	 * Never modifies the input automata languages.
+	 * <p>
+	 * Complexity: quadratic in number of states.
+	 */
+	intersection(other) {
+		throw 'Not implemented';
+	}
+
+	/**
 	 * Returns true if the language of <code>a1</code> is a subset of the
 	 * language of <code>a2</code>. 
 	 * As a side-effect, <code>a2</code> is determinized if not already marked as
@@ -370,7 +384,7 @@ class Automaton {
 			return other.run(this.singleton);
 		}
 		other.determinize();
-		// TODO: 
+
 		let trans1 = this.getSortedTrans(),
 			trans2 = other.getSortedTrans(),
 			worklist = [],
@@ -533,7 +547,7 @@ class Automaton {
 
 		let states = this.states(),
 			live = this.getLiveStates(states);
-		console.log('BEFORE removeDeadTransitions', states);
+		// console.log('BEFORE removeDeadTransitions', states);
 		for (let s of states) {
 			let trans = s.trans;
 			s.resetTransitions();
@@ -543,7 +557,7 @@ class Automaton {
 				}
 			}
 		}
-		console.log('AFTER removeDeadTransitions', states);
+		// console.log('AFTER removeDeadTransitions', states);
 		this.reduce();
 	}
 
@@ -556,7 +570,7 @@ class Automaton {
 			return;
 		}
 		let states = this.states();
-		this._setStateNumbers(states);
+		this.setStateNumbers(states);
 		for (let s of states) {
 			let trans = s.getTransSortedByToFirst();
 			s.resetTransitions();
@@ -594,7 +608,7 @@ class Automaton {
 	/** 
 	 * Assigns consecutive numbers to the given states. 
 	 */
-	_setStateNumbers(states) {
+	setStateNumbers(states) {
 		let n = 0;
 		for (let s of states) {
 			s.number = n++;
@@ -604,7 +618,7 @@ class Automaton {
 	getSortedTrans() {
 		let states = this.states();
 		// TODO: 
-		this._setStateNumbers(states);
+		this.setStateNumbers(states);
 		return states.map(s => {
 			return trans = s.getTransSorted();
 		});
@@ -660,7 +674,7 @@ class Automaton {
 	}
 
 	minimizeHopcroft() {
-		console.log('----- before determinize', this.states())
+		// console.log('----- before determinize', this.states())
 		this.determinize();
 		if (this.initial.noOfTransitions === 1) {
 			let t = this.initial.trans[0];
@@ -669,7 +683,7 @@ class Automaton {
 				&& t.max === MAX_CHAR)
 				return;
 		}
-		console.log('before totalize')
+		// console.log('before totalize')
 		this.totalize();
 		let ss = [...this.states()];
 		let number = 0;
@@ -677,7 +691,7 @@ class Automaton {
 		for (let q of ss) {
 			q.number = number++;
 		}
-		console.log('OLD STATE', ss);
+		// console.log('OLD STATE', ss);
 		let sigma = this.getStartPoints();
 
 		// TODO: init structs		
@@ -797,7 +811,7 @@ class Automaton {
 			newstates[n] = s;
 			for (let q of partition[n]) {
 				if (q === this.initial) {
-					console.log('set this initial ', s);
+					// console.log('set this initial ', s);
 					this.initial = s;
 				}
 				s.accept = q.accept;				
@@ -805,21 +819,21 @@ class Automaton {
 				s.number = q.number;
 				q.number = n;
 			}
-			console.log ('s = ', s);
+			// console.log ('s = ', s);
 		}
 		// build transitions and set acceptance
 		
 		
 		for (let n = 0; n < newstates.length; n++) {
 			let s = newstates[n];
-			console.log(s, '---', ss[s.number]);
+			// console.log(s, '---', ss[s.number]);
 			s.accept = ss[s.number].accept;
 			for (let t of ss[s.number].trans) {
 				s.addTran(new Transition(t.min, t.max, newstates[t.to.number]));
 			}
 
 		}
-		console.log('NEW STATE', newstates);
+		// console.log('NEW STATE', newstates);
 		// console.log(' actual state ', this.states())
 		this.removeDeadTransitions();
 	}
@@ -838,9 +852,29 @@ class Automaton {
 		}
 	}
 
-	// Returns true if the given string is accepted by the automaton.
-	run() {
-
+	/**
+	 * Returns true if the given string is accepted by the automaton.
+	 * <p>
+	 * Complexity: linear in the length of the string.
+	 * <p>
+	 * <b>Note:</b> for full performance, use the {@link RunAutomaton} class.
+	 */
+	run(s) {
+		if (this.isSingleton())
+			return s === this.singleton;
+		if (this.deterministic) {
+			let p = this.initial;
+			for (let i = 0; i < s.length; i++) {
+				let q = p.step(s[i]);
+				if (!q)
+					return false;
+				p = q;
+			}
+			return p.accept;
+		}
+		else {
+			throw 'Not implemented';
+		}
 	}
 
 	static alwaysMinimize() {

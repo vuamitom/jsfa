@@ -52,7 +52,7 @@ function toAutomaton(n, minimize) {
 		case K.REPEAT_MIN:		
 		case K.REPEAT_MINMAX:
 			a = toAutomaton(n.exp1, minimize).repeat(n.min, n.max);
-			console.log('REPEAT', a);
+			// console.log('REPEAT', a);
 			if (minimize)
 				a.minimize();
 		break;

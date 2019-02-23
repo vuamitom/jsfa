@@ -96,7 +96,7 @@ describe('Regexp', () => {
             assert.equal(t.trans[0].to, t);
         })
 
-        it.only('more complicated example', () => {
+        it('more complicated example', () => {
             let a = new Regexp('abc+d').toAutomaton();
             assert.equal(a.noOfTransitions(), 5);
             assert.equal(a.noOfStates(), 5);
@@ -121,6 +121,21 @@ describe('Regexp', () => {
                     assert.equal(t.to.accept, true);
                 }
             }
+        });
+        it('union', () => {
+            let a = new Regexp('ab|xy|zt').toAutomaton();
+            assert.equal(a.noOfTransitions(), 6);
+            assert.equal(a.noOfStates(), 5);
+            assert(a.deterministic);
+            let s = a.initial;
+            assert.equal(s.noOfTransitions, 3);
+            assert(helper.equalArrays(
+                s.trans.map(t => t.min).sort((a, b) => a - b),
+                ['a'.codePointAt(0), 'x'.codePointAt(0), 'z'.codePointAt(0)]));
+            s.trans.forEach(t => {
+                assert.equal(t.to.noOfTransitions, 1);
+            })
+
         })
     });
 });
