@@ -1,16 +1,8 @@
 const assert = require('assert');
 const Automaton = require('../src/automaton.js');
+const helper = require('./helper');
+const equalArrays = helper.equalArrays;
 
-function equalArrays(a1, a2) {
-    if (a1.length === a2.length) {
-        for (let i = 0 ; i < a1.length; i++) {
-            if (a1[i] != a2[i])
-                return false;
-        }
-        return true;
-    }
-    return false;
-}
 
 function makeRepeat(c) {
     let a1 = Automaton.makeChar('c').repeat(1);

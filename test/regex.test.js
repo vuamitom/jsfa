@@ -1,6 +1,7 @@
 const assert = require('assert');
 const jsfa = require('../index.js');
 const Regexp = jsfa.Regexp;
+const helper = require('./helper.js');
 
 describe('Regexp', () => {
     describe('#constructor()', () => {
@@ -96,24 +97,30 @@ describe('Regexp', () => {
         })
 
         it.only('more complicated example', () => {
-            let a = new Regexp('bc+').toAutomaton();
-            assert.equal(a.noOfTransitions(), 3);
-            assert.equal(a.noOfStates(), 3);
+            let a = new Regexp('abc+d').toAutomaton();
+            assert.equal(a.noOfTransitions(), 5);
+            assert.equal(a.noOfStates(), 5);
             let s = a.initial;
             assert(!s.accept);
-            ['a', 'b'].forEach(c => {
+            ['a', 'b', 'c'].forEach(c => {
                 assert.equal(s.noOfTransitions, 1);
+                assert.equal(s.accept, false);
                 assert.equal(s.trans[0].min, c.codePointAt(0));
                 assert.equal(s.trans[0].max, c.codePointAt(0));
                 s = s.trans[0].to;
             });
+            // after 'c'
             assert.equal(s.noOfTransitions, 2);
+            assert(helper.equalArrays(s.trans.map(t => t.min).sort((a, b) => a - b), [99, 100]));
 
-
+            for (let t of s.trans) {
+                if (t.min === 99) {
+                    assert.equal(t.to.accept, false);
+                }
+                else if (t.min === 100) {
+                    assert.equal(t.to.accept, true);
+                }
+            }
         })
     });
-});
-
-describe('Automaton', () => {
-
 });
