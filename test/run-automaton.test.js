@@ -56,6 +56,12 @@ describe('RunAutomaton', () => {
            for (let m of ['abc', 'abccccd', 'abc', 'abcd']) {
                assert.equal(res[x++], m)
            }
+
+           a = new Regexp('(kho[aả]n vay)|(vay v[oố]n)').toAutomaton();
+           ra = new RunAutomaton(a);
+           s = 'khoản vay này';
+           matcher = ra.matcher(s);
+           assert(matcher.find());
        });
 
 

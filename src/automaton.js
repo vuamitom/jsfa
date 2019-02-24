@@ -840,7 +840,7 @@ class Automaton {
 
 	minimize() {
 		if (!this.isSingleton()) {
-			console.log('minimizing ...')
+			// console.log('minimizing ...')
 			this.minimizeHopcroft();
 		}
 		this.recomputeHashCode();

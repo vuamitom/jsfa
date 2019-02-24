@@ -6,8 +6,7 @@ class Matcher {
     constructor(ra, s) {
         this.automaton = ra;
         this.chars = s;
-        this.matchStart = -1;
-        this.matchEnd = -1;
+        this.reset();
     }
 
     /**
@@ -88,6 +87,10 @@ class Matcher {
         this._matchGood();
         return this.matchEnd;
     }
+
+    reset() {
+        this.matchStart = this.matchEnd = -1;
+    }
 }
 
 class RunAutomaton {
@@ -129,8 +132,6 @@ class RunAutomaton {
      * Gets character class of given char.
      */
     getCharClass(c) {
-        if (c.constructor === String)
-            c = c.codePointAt(0);
         // c = c.codePointAt(0);
         if (this.classmap) {
             return this.classmap[c];

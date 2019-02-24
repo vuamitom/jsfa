@@ -1,5 +1,6 @@
 const Parser = require('./parser.js');
 const Automaton = require('./automaton.js');
+const RunAutomaton = require('./run-automaton.js');
 
 function flatten(n) {
 	let c = [];
@@ -81,6 +82,7 @@ class Regexp {
 	constructor(str) {		
 		this.str = str;		
 		this.root = Parser.parse(str);
+		this.ra = null;
 	}
 
 	toAutomaton() {
@@ -89,6 +91,30 @@ class Regexp {
 
 	toString() {
 		return this.root.toString();
+	}
+
+	/**
+	 * Provide method that matches native Regex api
+	 * @param s
+	 */
+	exec(s) {
+		if (!this.ra)
+			this.ra = new RunAutomaton(this.toAutomaton());
+
+		if (!this.matching || this.matching.str !== s)
+			this.matching = {
+				str: s, matcher: this.ra.matcher(s)
+			};
+		let m = this.matching.matcher;
+		if (m.find()) {
+			return s.substring(m.start(), m.end());
+		}
+		return null;
+	}
+
+	reset() {
+		if (this.matching)
+			this.matching.matcher.reset();
 	}
 }
 	
